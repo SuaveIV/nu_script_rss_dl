@@ -1,0 +1,25 @@
+# Downloaded audio files
+*.mp3
+*.m4a
+*.ogg
+*.opus
+*.flac
+*.wav
+
+# Generated playlists
+*.m3u
+*.m3u8
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Editor directories
+.vscode/
+.idea/
+
+# Nushell history / cache
+*.nu-history
