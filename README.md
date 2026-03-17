@@ -1,11 +1,6 @@
 # rss-dl
 
-A [Nushell](https://www.nushell.sh/) script that downloads MP3s from a podcast RSS feed and generates an M3U playlist.
-
-## Requirements
-
-- [Nushell](https://www.nushell.sh/) 0.111 or later
-- Internet access (uses Nushell's built-in `http get`)
+Downloads MP3s from a podcast RSS feed and writes an M3U playlist. Runs on [Nushell](https://www.nushell.sh/) 0.111+.
 
 ## Usage
 
@@ -17,29 +12,31 @@ nu rss-dl.nu <rss_url> [flags]
 
 | Flag | Short | Default | Description |
 | --- | --- | --- | --- |
-| `--list` | `-l` | — | Print episodes without downloading anything |
-| `--output-dir` | `-o` | `.` | Directory to save MP3s and the playlist |
-| `--playlist-name` | `-p` | `playlist.m3u` | Filename for the generated M3U playlist |
-| `--retries` | `-r` | `3` | Number of HTTP attempts per request |
-| `--retry-delay` | `-d` | `1sec` | Initial delay between retries (doubles each attempt) |
+| `--list` | `-l` | — | Print episodes without downloading |
+| `--output-dir` | `-o` | `.` | Where to save MP3s and the playlist |
+| `--playlist-name` | `-p` | `playlist.m3u` | Playlist filename |
+| `--retries` | `-r` | `3` | HTTP attempts per request |
+| `--retry-delay` | `-d` | `1sec` | Initial retry delay (doubles each attempt) |
 
 ### Examples
 
 ```nushell
-# Preview what's in a feed before downloading anything
+# Check what's in a feed before downloading
 nu rss-dl.nu https://example.com/feed.rss -l
 
-# Download everything into the current directory
+# Download to the current directory
 nu rss-dl.nu https://example.com/feed.rss
 
-# Download into a specific folder with a custom playlist name
+# Custom output folder and playlist name
 nu rss-dl.nu https://example.com/feed.rss -o ./my-podcast -p my-podcast.m3u
 
-# Be more aggressive about retrying flaky connections
+# More retries for a flaky connection
 nu rss-dl.nu https://example.com/feed.rss -o ./pod -r 5 -d 2sec
 ```
 
-### List mode output
+### Output
+
+`-l` (list mode):
 
 ```nushell
 📡 Fetching RSS feed: https://example.com/feed.rss
@@ -53,7 +50,7 @@ nu rss-dl.nu https://example.com/feed.rss -o ./pod -r 5 -d 2sec
   ...
 ```
 
-### Download mode output
+Download mode:
 
 ```nushell
 📡 Fetching RSS feed: https://example.com/feed.rss
@@ -70,13 +67,34 @@ nu rss-dl.nu https://example.com/feed.rss -o ./pod -r 5 -d 2sec
 
 ## How it works
 
-1. **Fetch** — `http-get-with-retry` fetches the RSS XML as raw bytes with exponential-backoff retries (1s → 2s → 4s → …).
-2. **Parse** — `from xml` walks the RSS tree extracting `<title>` and `<enclosure url type>` from each `<item>`. Items without an `audio/*` MIME type are skipped.
-3. **Download** — each MP3 URL is fetched via `http-get-with-retry` and written to disk with `save`. Files that already exist are skipped.
-4. **Playlist** — an `#EXTM3U` playlist is written with relative paths (`./episode.mp3`) and `#EXTINF` title lines.
+The feed is fetched as raw bytes and parsed with `from xml` — not `query xml`, which uses CSS selectors and can't reach XML attributes like `url=` and `type=`. Each `<item>` is checked for an `<enclosure>` with an `audio/*` MIME type; anything else is skipped.
 
-## Notes
+Downloads go through `http-get-with-retry`, which backs off exponentially between attempts (1s → 2s → 4s…). Files already on disk are skipped, so re-running is safe. Query strings are stripped from URLs before they become filenames (`ep1.mp3?token=abc` → `ep1.mp3`).
 
-- **`query xml` is not used** for attribute access. Nushell's `query xml` uses CSS selectors, which cannot extract XML attribute values (`url=`, `type=`). The script uses `from xml` throughout for full tree access.
-- **Query strings are stripped** from enclosure URLs before using them as filenames (e.g. `ep1.mp3?token=abc` → `ep1.mp3`).
-- **Re-runs are safe** — already-downloaded files are detected by path and skipped without re-fetching.
+The playlist is standard `#EXTM3U` with relative paths, so it works wherever you put the folder.
+
+## Installation
+
+Copy the script into your Nushell scripts directory:
+
+```nushell
+cp rss-dl.nu ($nu.default-config-dir | path join scripts)
+```
+
+Run it from anywhere with an explicit `nu` call:
+
+```nushell
+nu ($nu.default-config-dir | path join scripts rss-dl.nu) -l https://example.com/feed.rss
+```
+
+To run it as a bare command (`rss-dl ...`), add the scripts directory to `$env.PATH` in your `env.nu`:
+
+```nushell
+$env.PATH = ($env.PATH | prepend ($nu.default-config-dir | path join scripts))
+```
+
+To uninstall:
+
+```nushell
+rm ($nu.default-config-dir | path join scripts rss-dl.nu)
+```
