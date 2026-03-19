@@ -186,9 +186,10 @@ def main [
         )
         match $result.status {
             "ok"      => { print $"  ✓  Downloaded: ($result.filename)" }
-            "skipped" => { print $"  ⏭  Skipping (already exists): ($result.filename)" }
+            "skipped" => { print $"  ⏭  Skipping [already exists]: ($result.filename)" }
             _         => { print $"  ✗  Failed: ($result.filename)" }
         }
+        # nu-lint-ignore: string_may_be_bare
         if $result.status != "failed" {
             $downloaded ++= [$result]
         }
