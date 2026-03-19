@@ -121,14 +121,14 @@ def download-episode [
     let filename = ($url_base | path basename | url decode)
     let dest     = ([$output_dir $filename] | path join)
     let status   = if ($dest | path exists) {
-        skipped
+        "skipped"
     } else {
         try {
             http-get-with-retry $ep.url --retries $retries --retry-delay $retry_delay
             | save --force $dest
-            ok
+            "ok"
         } catch {
-            failed
+            "failed"
         }
     }
     {title: $ep.title, filename: $filename, status: $status}
@@ -185,11 +185,11 @@ def main [
             download-episode $ep $output_dir --retries $retries --retry-delay $retry_delay
         )
         match $result.status {
-            ok      => { print $"  ✓  Downloaded: ($result.filename)" }
-            skipped => { print $"  ⏭  Skipping (already exists): ($result.filename)" }
-            _       => { print $"  ✗  Failed: ($result.filename)" }
+            "ok"      => { print $"  ✓  Downloaded: ($result.filename)" }
+            "skipped" => { print $"  ⏭  Skipping (already exists): ($result.filename)" }
+            _         => { print $"  ✗  Failed: ($result.filename)" }
         }
-        if $result.status != failed {
+        if $result.status != "failed" {
             $downloaded ++= [$result]
         }
     }
